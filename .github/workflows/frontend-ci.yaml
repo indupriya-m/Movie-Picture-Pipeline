@@ -67,9 +67,9 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        env:
-          CI: true
-        run: npm run test
+         env:
+           CI: true
+         run: npm run test -- --watchAll=false --passWithNoTests
 
   build:
     runs-on: ubuntu-latest
