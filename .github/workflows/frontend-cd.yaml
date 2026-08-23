@@ -1,0 +1,45 @@
+name: Frontend CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'starter/frontend/**'
+      - '.github/workflows/frontend-cd.yaml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push frontend image
+        run: |
+          IMAGE=338760044134.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ github.sha }}
+          docker build \
+            --build-arg REACT_APP_MOVIE_API_URL=http://a50aa17f1660340c3b09ac0b58fba467-2137938298.us-east-1.elb.amazonaws.com \
+            -t $IMAGE starter/frontend
+          docker push $IMAGE
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name cluster
+
+      - name: Deploy frontend
+        run: |
+          kubectl set image deployment/frontend \
+            frontend=338760044134.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ github.sha }}
+          kubectl rollout status deployment/frontend --timeout=5m
