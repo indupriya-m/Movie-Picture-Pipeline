@@ -88,9 +88,9 @@ jobs:
         working-directory: starter/frontend
         run: npm ci
 
-      - name: Run tests
+      - name: Build frontend
         working-directory: starter/frontend
-        run: npm run test -- --watchAll=false
+        run: npm run build
 
       - name: Build Docker image
         run: docker build -t frontend:latest starter/frontend

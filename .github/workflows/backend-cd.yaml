@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'starter/backend/**'
-      - '.github/workflows/backend-cd.yaml'
   workflow_dispatch:
 
 jobs:
@@ -30,10 +27,8 @@ jobs:
         run: pip install pipenv
 
       - name: Install dependencies
-        run: pipenv install
+        run: pipenv install --dev --deploy
 
-      - name: Install flake8
-        run: pip install flake8
       - name: Run lint
         run: pipenv run lint
 
@@ -57,7 +52,7 @@ jobs:
         run: pip install pipenv
 
       - name: Install dependencies
-        run: pipenv install
+        run: pipenv install --dev --deploy
 
       - name: Run tests
         run: pipenv run test
@@ -69,6 +64,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        working-directory: starter/backend
+        run: pipenv install --dev --deploy
+
+      - name: Build backend
+        working-directory: starter/backend
+        run: python -m compileall .
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
