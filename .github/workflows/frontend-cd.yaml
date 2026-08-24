@@ -1,4 +1,4 @@
-name: Frontend CD
+name: Frontend Continuous Deployment
 
 on:
   push:
@@ -7,9 +7,55 @@ on:
     paths:
       - 'starter/frontend/**'
       - '.github/workflows/frontend-cd.yaml'
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: starter/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: starter/frontend
+        run: npm ci
+
+      - name: Run lint
+        working-directory: starter/frontend
+        run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: starter/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: starter/frontend
+        run: npm ci
+
+      - name: Run tests
+        working-directory: starter/frontend
+        run: npm run test -- --watchAll=false
+
+  build:
+    needs: [lint, test]
     runs-on: ubuntu-latest
 
     steps:
@@ -33,6 +79,21 @@ jobs:
             --build-arg REACT_APP_MOVIE_API_URL=http://a50aa17f1660340c3b09ac0b58fba467-2137938298.us-east-1.elb.amazonaws.com \
             -t $IMAGE starter/frontend
           docker push $IMAGE
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Update kubeconfig
         run: |

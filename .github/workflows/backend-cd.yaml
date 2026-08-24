@@ -1,4 +1,4 @@
-name: Backend CD
+name: Backend Continuous Deployment
 
 on:
   push:
@@ -7,9 +7,61 @@ on:
     paths:
       - 'starter/backend/**'
       - '.github/workflows/backend-cd.yaml'
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  lint:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: starter/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        run: pipenv install
+
+      - name: Run lint
+        run: pipenv run lint
+
+  test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: starter/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        run: pipenv install
+
+      - name: Run tests
+        run: pipenv run test
+
+  build:
+    needs: [lint, test]
     runs-on: ubuntu-latest
 
     steps:
@@ -31,6 +83,21 @@ jobs:
           IMAGE=338760044134.dkr.ecr.us-east-1.amazonaws.com/backend:${{ github.sha }}
           docker build -t $IMAGE starter/backend
           docker push $IMAGE
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Update kubeconfig
         run: |
